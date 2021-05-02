@@ -6,11 +6,6 @@ import scipy.special as sc
 import matplotlib.pyplot as plt
 from george.modeling import Model
 
-#samples_Ez = np.loadtxt('/Users/rodrigocalderon/Downloads/samples1sigma.txt')
-
-#zp=np.linspace(1e-2,1e2,1000)
-#zp=np.linspace(1e-3,1e1,1000)
-
 #---------------------------
 def system_ODE_GP(vec,a,p,zp,mu,om):
   #LCDM currently working!
@@ -42,13 +37,13 @@ def get_sols_a(a,p,zp,mu,om=0.3,s8=0.81):
   ------------  '''
 
   # ODE solver parameters
-  abserr = 1.0e-10
-  relerr = 1.0e-10
+  abserr = 1.0e-8
+  relerr = 1.0e-8
 
   aini=a[0]
   y0=[aini,1]
-  sols=odeint(system_ODE_GP,y0,a,args=(p,zp,mu,om,), atol=abserr, rtol=relerr,h0=10**(-10))
-  d,f,fs8 = sols[:,0], a/sols[:,0]*sols[:,1], s8*a/(sols[:,0][-1])*sols[:,1]
+  d,dp=odeint(system_ODE_GP,y0,a,args=(p,zp,mu,om,), atol=abserr, rtol=relerr,h0=10**(-10))
+  d,f,fs8 = d, a/d*dp, s8*a/(d[-1])*dp
   return (d, f, fs8)
 
 #---------------------------
