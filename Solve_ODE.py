@@ -43,9 +43,9 @@ def get_sols_a(a,p,zp,mu,om=0.3,s8=0.81):
   aini=a[0]
   y0=[aini,1]
   sols=odeint(system_ODE_GP,y0,a,args=(p,zp,mu,om,), atol=abserr, rtol=relerr,h0=10**(-10))
-  d,dp=sols[:,0], sols[:,1]
-  d,f,fs8 = d, a/d*dp, s8*a/(d[-1])*dp
-  return (d, f, fs8)
+#   d,dp=sols[:,0], sols[:,1]
+#   d,f,fs8 = sols[:,0], a/sols[:,0]*sols[:,1], s8*a/(sols[:,0][-1])*sols[:,1]
+  return (sols[:,0], a/sols[:,0]*sols[:,1], s8*a/(sols[:,0][-1])*sols[:,1])
 
 #---------------------------
 class g_fR(Model):
