@@ -47,6 +47,44 @@ def get_sols_a(a,p,zp,mu,om=0.3,s8=0.81):
 #   d,f,fs8 = sols[:,0], a/sols[:,0]*sols[:,1], s8*a/(sols[:,0][-1])*sols[:,1]
   return (sols[:,0], a/sols[:,0]*sols[:,1], s8*a/(sols[:,0][-1])*sols[:,1])
 
+
+
+def system_ODE_CPL(vec,a,p,mu):
+    om,w0,wa=p
+    Hs=lambda a: np.sqrt((np.exp(-3*wa + 3*a*wa)*(1 - om))/a**(3*(1 + w0 + wa)) + om/a**3)
+    Hsp=lambda a: ((-3*om)/a**4 + (3*np.exp(-3*wa + 3*a*wa)*(1 - om)*wa)/a**(3*(1 + w0 + wa))-3*a**(-1-3*(1 + w0 + wa))*np.exp(-3*wa+3*a*wa)*(1-om)*(1 + w0 + wa))/(2.*np.sqrt((np.exp(-3*wa + 3*a*wa)*(1 - om))/a**(3*(1+w0+wa))+om/a**3))
+
+    #System ODE
+    x1,x2=vec[0],vec[1]
+    x1p=x2
+    #x2p=3/2*(a**(-5)*om)/(Hs(a))**2 *x1 - (3/a + (Hsp(a)/Hs(a)))*x2
+    x2p=3/2*(a**(-5)*om*mu.get_value(1/a-1))/Hs(a)**2 *x1 - (3/a + (Hsp(a)/Hs(a)))*x2
+    return np.array([x1p,x2p])
+
+#---------------------------
+def get_sols_CPL(a,p,mu,s8):
+  ''' --------------
+   Returns delta_m(a), f(a) and fs8(a). Must input cosmological parameters:
+
+   - p = H(a)/H0 - array with (normalized) prediction from GP,
+   - mu(a),
+   - Omega_m0 ,
+   - s8,0
+
+  in that order.
+  ------------  '''
+
+  # ODE solver parameters
+  abserr = 1.0e-10
+  relerr = 1.0e-10
+
+  aini=a[0]
+  y0=[aini,1]
+  sols=odeint(system_ODE_CPL,y0,a,args=(p,mu,), atol=abserr, rtol=relerr,h0=10**(-10))
+  d,f,fs8 = sols[:,0], a/sols[:,0]*sols[:,1], s8*a/(sols[:,0][-1])*sols[:,1]
+  return (d, f, fs8)
+
+
 #---------------------------
 class g_fR(Model):
     parameter_names = ("amp","loc")
