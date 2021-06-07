@@ -1,6 +1,7 @@
 #@title Solving ODE
 import numpy as np
 from scipy.integrate import odeint
+from scipy.integrate import quad
 from scipy.interpolate import UnivariateSpline
 import scipy.special as sc
 import matplotlib.pyplot as plt
@@ -66,9 +67,8 @@ def get_sols_CPL(a,p,mu,s8):
   ''' --------------
    Returns delta_m(a), f(a) and fs8(a). Must input cosmological parameters:
 
-   - p = H(a)/H0 - array with (normalized) prediction from GP,
+   - p = (om,w0,wa) - tuple with cosmological parameters to instantiate the CPL class,
    - mu(a),
-   - Omega_m0 ,
    - s8,0
 
   in that order.
@@ -83,6 +83,58 @@ def get_sols_CPL(a,p,mu,s8):
   sols=odeint(system_ODE_CPL,y0,a,args=(p,mu,), atol=abserr, rtol=relerr,h0=10**(-10))
   d,f,fs8 = sols[:,0], a/sols[:,0]*sols[:,1], s8*a/(sols[:,0][-1])*sols[:,1]
   return (d, f, fs8)
+
+#---------------------------
+def rhode(a,w):
+  # from scipy.integrate import quad
+
+  #this gives a callable for (1+w(a))/a needed for quad integration
+  onepw_integrand=UnivariateSpline(a_pred,(1+w)/a_pred.flatten(),k=3,s=0.1)
+  if isiterable(a):
+      a = np.asarray(a)
+      ival = np.array([quad(onepw_integrand, aa, 1)[0]
+                        for aa in a])
+      return np.exp(3 * ival)
+  else:
+      ival = quad(onepw_integrand,a, 1)[0]
+      return np.exp(3 * ival)
+
+#---------------------------
+def system_ODE_w(vec,a,wgp,a_pred,mu,om):
+    onepw=UnivariateSpline(a_pred,(1+wgp),k=3,s=0.1)
+    Hs=lambda a: np.sqrt(om*a**(-3)+(1-om)*rhode(a,wgp))
+    Hsp=lambda a: -3/2*(om*a**(-4)+rhode(a,wgp)*(1-om)*onepw(a)/a)/np.sqrt(om*a**(-3)+(1-om)*rhode(a,wgp))
+
+    #System ODE
+    x1,x2=vec[0],vec[1]
+    x1p=x2
+    x2p=3/2*(a**(-5)*om*mu.get_value(1/a - 1))/Hs(a)**2 *x1 - (3/a + (Hsp(a)/Hs(a)))*x2
+    return np.array([x1p,x2p])
+
+#---------------------------
+def get_sols_w(a,wgp,ap,om,mu,s8):
+  ''' --------------
+   Returns delta_m(a), f(a) and fs8(a). Must input the following:
+
+   - wgp = w(ap)  - array with w sample from GP on ap=a_pred,
+   - ap - array where the prediction was computed
+   - Omega_m0 ,
+   - mu(a),
+   - s8,0
+
+  in that order.
+  ------------  '''
+
+  # ODE solver parameters
+  abserr = 1.0e-10
+  relerr = 1.0e-10
+
+  aini=a[0]
+  y0=[aini,1]
+  sols=odeint(system_ODE_w,y0,a,args=(wgp,ap,mu,om,), atol=abserr, rtol=relerr,h0=10**(-10))
+  d,f,fs8 = sols[:,0], a/sols[:,0]*sols[:,1], s8*a/(sols[:,0][-1])*sols[:,1]
+  return (d, f, fs8)
+
 
 
 #---------------------------
